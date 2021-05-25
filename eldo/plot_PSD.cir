@@ -1,0 +1,8 @@
+*** Example netlist of myentity using ELDO macromodel
+*** This file is parsed to find only the top-level subcircuit
+*** Top level subcircuit name is defined with the line below:
+*** Design cell name: myentity_example
+
+.SUBCKT plot_PSD_example IN OUT
+    INV0 IN OUT VHI=1 VLO=0 VTHI=0.5 VTLO=0.5 TPD=0.1n
+.ENDS

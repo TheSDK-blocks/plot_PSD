@@ -1,0 +1,10 @@
+Makefile
+**/__pycache__
+doc/build/*
+*.eps
+*.pdf
+*~
+*.swp
+*.nfs
+*.svn
+*.asv
