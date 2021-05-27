@@ -28,12 +28,18 @@ from thesdk import *
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as sig
+from scipy import fft as sp_fft
+
+import multiprocessing
+import time
+import random
 
 
 import logging
 logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
 def plot_PSD(**kwargs):
+
         """ Method for plotting PSD of one signal. If BW is given and no_plot is 0, will add ACLR levels to figure.
 
             Parameters
@@ -53,7 +59,301 @@ def plot_PSD(**kwargs):
             -------
             self.plot_PSD(signal=[1+....-0.5],Fc=1e9,Fs=10e9, BW=200e6)
 
+
         """
+        def _fft_helper(x, win, detrend_func, nperseg, noverlap, nfft, sides):
+
+            # Created strided array of data segments
+            if nperseg == 1 and noverlap == 0:
+                result = x[..., np.newaxis]
+            else:
+                # https://stackoverflow.com/a/5568169
+                step = nperseg - noverlap
+                shape = x.shape[:-1]+((x.shape[-1]-noverlap)//step, nperseg)
+                strides = x.strides[:-1]+(step*x.strides[-1], x.strides[-1])
+                result = np.lib.stride_tricks.as_strided(x, shape=shape,strides=strides)
+              
+
+            # Detrend each data segment individually
+            result = detrend_func(result)
+
+            # Apply window by multiplication
+            result = win * result
+
+            # Perform the fft. Acts on last axis by default. Zero-pads automatically
+            if sides == 'twosided':
+                func = sp_fft.fft
+            else:
+                result = result.real
+                func = sp_fft.rfft
+                  
+
+            result = func(result, n=nfft, workers = os.cpu_count())
+
+            return result
+
+        def _triage_segments(window, nperseg, input_length):
+   
+    # parse window; if array like, then set nperseg = win.shape
+            if isinstance(window, str) or isinstance(window, tuple):
+                # if nperseg not specified
+                if nperseg is None:
+                    nperseg = 256  # then change to default
+                if nperseg > input_length:
+                    warnings.warn('nperseg = {0:d} is greater than input length '
+                          ' = {1:d}, using nperseg = {1:d}'
+                          .format(nperseg, input_length))
+                    nperseg = input_length
+                win = get_window(window, nperseg)
+            else:
+                win = np.asarray(window)
+                if len(win.shape) != 1:
+                    raise ValueError('window must be 1-D')
+                if input_length < win.shape[-1]:
+                    raise ValueError('window is longer than input signal')
+                if nperseg is None:
+                    nperseg = win.shape[0]
+                elif nperseg is not None:
+                    if nperseg != win.shape[0]:
+                        raise ValueError("value specified for nperseg is different"
+                                 " from length of window")
+            return win, nperseg
+
+
+        def _spectral_helper(x, y, fs=1.0, window='hann', nperseg=None, noverlap=None,nfft=None, detrend='constant', return_onesided=True,scaling='density', axis=-1, mode='psd', boundary=None, padded=False):
+            
+
+            if mode not in ['psd', 'stft']:
+                raise ValueError("Unknown value for mode %s, must be one of: "
+                         "{'psd', 'stft'}" % mode)
+
+            boundary_funcs = {#'even': even_ext,
+                              #'odd': odd_ext,
+                              #'constant': const_ext,
+                              #'zeros': zero_ext,
+                               None: None}
+
+            if boundary not in boundary_funcs:
+                raise ValueError("Unknown boundary option '{0}', must be one of: {1}".format(boundary, list(boundary_funcs.keys())))
+
+            # If x and y are the same object we can save ourselves some computation.
+            same_data = y is x
+
+            if not same_data and mode != 'psd':
+                raise ValueError("x and y must be equal if mode is 'stft'")
+
+            axis = int(axis)
+
+            # Ensure we have np.arrays, get outdtype
+            x = np.asarray(x)
+            if not same_data:
+                y = np.asarray(y)
+                outdtype = np.result_type(x, y, np.complex64)
+            else:
+                outdtype = np.result_type(x, np.complex64)
+
+            if not same_data:
+        # Check if we can broadcast the outer axes together
+                xouter = list(x.shape)
+                youter = list(y.shape)
+                xouter.pop(axis)
+                youter.pop(axis)
+                try:
+                    outershape = np.broadcast(np.empty(xouter), np.empty(youter)).shape
+                except ValueError as e:
+                    raise ValueError('x and y cannot be broadcast together.') from e
+
+            if same_data:
+                if x.size == 0:
+                    return np.empty(x.shape), np.empty(x.shape), np.empty(x.shape)
+            else:
+                if x.size == 0 or y.size == 0:
+                    outshape = outershape + (min([x.shape[axis], y.shape[axis]]),)
+                    emptyout = np.rollaxis(np.empty(outshape), -1, axis)
+                    return emptyout, emptyout, emptyout
+
+            if x.ndim > 1:
+                print('>1')
+                if axis != -1:
+                    print('-1')
+                    x = np.rollaxis(x, axis, len(x.shape))
+                    if not same_data and y.ndim > 1:
+                        y = np.rollaxis(y, axis, len(y.shape))
+
+            # Check if x and y are the same length, zero-pad if necessary
+            if not same_data:
+                if x.shape[-1] != y.shape[-1]:
+                    if x.shape[-1] < y.shape[-1]:
+                        pad_shape = list(x.shape)
+                        pad_shape[-1] = y.shape[-1] - x.shape[-1]
+                        x = np.concatenate((x, np.zeros(pad_shape)), -1)
+                    else:
+                        pad_shape = list(y.shape)
+                        pad_shape[-1] = x.shape[-1] - y.shape[-1]
+                        y = np.concatenate((y, np.zeros(pad_shape)), -1)
+
+            if nperseg is not None:# if specified by user
+                nperseg = int(nperseg)
+                if nperseg < 1:
+                    raise ValueError('nperseg must be a positive integer')
+
+    # parse window; if array like, then set nperseg = win.shape
+            win, nperseg = _triage_segments(window, nperseg, input_length=x.shape[-1])
+
+            if nfft is None:
+                nfft = nperseg
+            elif nfft < nperseg:
+                raise ValueError('nfft must be greater than or equal to nperseg.')
+            else:
+                nfft = int(nfft)
+
+            if noverlap is None:
+                noverlap = nperseg//2
+            else:
+                noverlap = int(noverlap)
+            if noverlap >= nperseg:
+                raise ValueError('noverlap must be less than nperseg.')
+            nstep = nperseg - noverlap
+
+            # Padding occurs after boundary extension, so that the extended signal ends
+            # in zeros, instead of introducing an impulse at the end.
+            # I.e. if x = [..., 3, 2]
+            # extend then pad -> [..., 3, 2, 2, 3, 0, 0, 0]
+            # pad then extend -> [..., 3, 2, 0, 0, 0, 2, 3]
+
+            if boundary is not None:
+                ext_func = boundary_funcs[boundary]
+                x = ext_func(x, nperseg//2, axis=-1)
+                if not same_data:
+                    y = ext_func(y, nperseg//2, axis=-1)
+
+            if padded:
+            # Pad to integer number of windowed segments
+            # I.e make x.shape[-1] = nperseg + (nseg-1)*nstep, with integer nseg
+                nadd = (-(x.shape[-1]-nperseg) % nstep) % nperseg
+                zeros_shape = list(x.shape[:-1]) + [nadd]
+                x = np.concatenate((x, np.zeros(zeros_shape)), axis=-1)
+                if not same_data:
+                    zeros_shape = list(y.shape[:-1]) + [nadd]
+                    y = np.concatenate((y, np.zeros(zeros_shape)), axis=-1)
+
+    # Handle detrending and window functions
+            if not detrend:
+                def detrend_func(d):
+                    return d
+            
+            elif not hasattr(detrend, '__call__'):
+                def detrend_func(d):
+                    return signaltools.detrend(d, type=detrend, axis=-1)
+            elif axis != -1:
+
+            # Wrap this function so that it receives a shape that it could
+            # reasonably expect to receive.
+                def detrend_func(d):
+                    d = np.rollaxis(d, -1, axis)
+                    d = detrend(d)
+                    return np.rollaxis(d, axis, len(d.shape))
+            else:
+                detrend_func = detrend
+
+            if np.result_type(win, np.complex64) != outdtype:
+                win = win.astype(outdtype)
+
+            if scaling == 'density':
+                scale = 1.0 / (fs * (win*win).sum())
+            elif scaling == 'spectrum':
+                scale = 1.0 / win.sum()**2
+            else:
+                raise ValueError('Unknown scaling: %r' % scaling)
+
+            if mode == 'stft':
+                scale = np.sqrt(scale)
+
+            if return_onesided:
+                if np.iscomplexobj(x):
+                    sides = 'twosided'
+                    warnings.warn('Input data is complex, switching to '
+                          'return_onesided=False')
+                else:
+                    sides = 'onesided'
+                    if not same_data:
+                        if np.iscomplexobj(y):
+                            sides = 'twosided'
+                            warnings.warn('Input data is complex, switching to '
+                                  'return_onesided=False')
+            else:
+                sides = 'twosided'
+
+            if sides == 'twosided':
+                freqs = sp_fft.fftfreq(nfft, 1/fs)
+            elif sides == 'onesided':
+                freqs = sp_fft.rfftfreq(nfft, 1/fs)
+
+        # Perform the windowed FFTs
+            result = _fft_helper(x, win, detrend_func, nperseg, noverlap, nfft, sides)
+            if not same_data:
+        # All the same operations on the y data
+                result_y = _fft_helper(y, win, detrend_func, nperseg, noverlap, nfft,sides)
+                result = np.conjugate(result) * result_y
+            elif mode == 'psd':
+                result = np.conjugate(result) * result
+            result *= scale
+            if sides == 'onesided' and mode == 'psd':
+                if nfft % 2:
+                    result[..., 1:] *= 2
+                else:
+                # Last point is unpaired Nyquist freq point, don't double
+                    result[..., 1:-1] *= 2
+
+            time = np.arange(nperseg/2, x.shape[-1] - nperseg/2 + 1,nperseg - noverlap)/float(fs)
+            if boundary is not None:
+                time -= (nperseg/2) / fs
+
+            result = result.astype(outdtype)
+
+    # All imaginary parts are zero anyways
+            if same_data and mode != 'stft':
+                result = result.real
+
+        # Output is going to have new last axis for time/window index, so a
+        # negative axis index shifts down one
+            if axis < 0:
+                axis -= 1
+
+    # Roll frequency axis back to axis where the data came from
+            result = np.rollaxis(result, -1, axis)
+
+            return freqs, time, result
+
+        def welch(x, fs=1.0, window='hann', nperseg=None, noverlap=None, nfft=None, detrend='constant', return_onesided=True, scaling='density',axis=-1, average='mean'):
+
+            freqs, Pxx = csd(x, x, fs=fs, window=window, nperseg=nperseg,
+                             noverlap=noverlap, nfft=nfft, detrend=detrend,
+                             return_onesided=return_onesided, scaling=scaling,
+                             axis=axis, average=average)
+
+            return freqs, Pxx.real
+
+
+        def csd(x, y, fs=1.0, window='hann', nperseg=None, noverlap=None, nfft=None,detrend='constant', return_onesided=True, scaling='density',axis=-1, average='mean'):
+            
+            freqs, _, Pxy = _spectral_helper(x, y, fs, window, nperseg, noverlap, nfft,detrend, return_onesided, scaling, axis,mode='psd')
+
+            # Average over windows.
+            if len(Pxy.shape) >= 2 and Pxy.size > 0:
+                if Pxy.shape[-1] > 1:
+                    if average == 'median':
+                        Pxy = np.median(Pxy, axis=-1) / _median_bias(Pxy.shape[-1])
+                    elif average == 'mean':
+                        Pxy = Pxy.mean(axis=-1)
+                    else:
+                        raise ValueError('average must be "median" or "mean", got %s'
+                                         % (average,))
+                else:
+                    Pxy = np.reshape(Pxy, Pxy.shape[:-1])
+
+            return freqs, Pxy
+                
 
         BW=0
         Fc=0
@@ -74,7 +374,6 @@ def plot_PSD(**kwargs):
      
 
         #s=x.NRfilter(Fs,s,BW,x.self.osr)
-        logging.info('Initializing')
         s=x[:,1]+1j*x[:,2]
         Lsegm_perc = 10
         Fs_given = 0
@@ -93,21 +392,14 @@ def plot_PSD(**kwargs):
         Lsegm = round(len(s)*Lsegm_perc/100)
         noverlap = round(Lsegm * overlap_perc/100)
 
-        logging.info('Before win')
-
+        
         win=sig.tukey(Lsegm,param)
 
-        print('Lsegm',Lsegm)
-        #print('length',len(Lsegm))
-        print('win',win)
-        print('len win',len(win))
-
-        logging.info('after win')
-
-        f,Pxx=sig.welch(np.real(s),Fs,win,Lsegm,noverlap=noverlap,detrend=False, return_onesided=True)
-        #f,Pxx=sig.welch(np.real(s),Fs,noverlap=noverlap,detrend=False, return_onesided=True)
-
-        logging.info('After wlsch func')
+        logging.info('Before welch')
+                
+        f,Pxx= welch(np.real(s),Fs,win,Lsegm,noverlap=noverlap,detrend=False, return_onesided=True)
+       
+        logging.info('After welch func')
 
         
         y=10*np.log10(Pxx/max(Pxx))
@@ -119,20 +411,16 @@ def plot_PSD(**kwargs):
         y_plot =y # y[n1-1:n2]
 
         o=f_plot.argsort()
-        logging.info('After wlsch func n after initialization')
 
         if no_plot==0:
-            logging.info('I am here in no plot')
             fig,ax=plt.subplots()
             plt.plot(f_plot[o]/(10**6),y_plot[o])
             plt.grid(b=True)
             plt.title("Signal spectrum")
-            logging.info('done with no plot')
 
 
         #pdb.set_trace()
         if BW!=0:
-            logging.info('starting with BW')
             ACLR=[]
             matrix=np.transpose(np.vstack((f,Pxx)))
             matrix=matrix[matrix[:,0].argsort()]
@@ -157,7 +445,6 @@ def plot_PSD(**kwargs):
                 if no_plot==0:
                     ax.hlines(10*np.log10(ac),(Fc+(i-0.5)*BW)/(10**6),(Fc+(i+0.5)*BW)/(10**6),label=str(ac),colors='r',zorder=10)
                     ax.text(x=(Fc+(i-0.5)*BW)/(10**6),y=10*np.log10(ac)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
-            logging.info('done with no BW')
 
         if no_plot==0:
             #plt.xlim((0,2*Fc/(10**6)))
