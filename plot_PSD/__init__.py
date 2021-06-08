@@ -54,6 +54,8 @@ def plot_PSD(**kwargs):
                 Bandwidth of whole signal
             no_plot : binary
                 If 1, will return y and x- axis data (and ACLR) without plotting.
+            double_sided: Boolean
+                Double sided plot around central frequency
 
             Example
             -------
@@ -362,7 +364,7 @@ def plot_PSD(**kwargs):
         zoom_plt = 0
 
         a=100
-        x=[] #self.rf_signal
+        s=[] #self.rf_signal
         
 
         
@@ -392,13 +394,18 @@ def plot_PSD(**kwargs):
 
         print('BW',BW)
 
+        if 'double_sided' in kwargs:
+            d_s = kwargs.get('double_sided', "False")
+        if 'signal' in kwargs:
+            s=kwargs.get('signal')
+     
 
     
         #s=x.NRfilter(Fs,s,BW,x.self.osr)
         #print('s',x)
         #print('s',x.shape)
         #print('s', x[2])
-        s= x[:,1]+1j*x[:,2]
+        #s= x[:,1]+1j*x[:,2]
 
         Lsegm_perc = 10
         Fs_given = 0
@@ -420,11 +427,19 @@ def plot_PSD(**kwargs):
         
         win=sig.tukey(Lsegm,param)
 
-        logging.info('Before welch')
                 
-        f,Pxx= welch(np.real(s),Fs,win,Lsegm,noverlap=noverlap,detrend=False, return_onesided=True)
        
-        logging.info('After welch func')
+        print('Lsegm',Lsegm)
+        #print('length',len(Lsegm))
+        print('win',win)
+        print('len win',len(win))
+
+        logging.info('after win')
+
+        f,Pxx=sig.welch(np.real(s),Fs,win,Lsegm,noverlap=noverlap,detrend=False, return_onesided= not(d_s))
+        #f,Pxx=sig.welch(np.real(s),Fs,noverlap=noverlap,detrend=False, return_onesided=True)
+
+        logging.info('After wlsch func')
 
         
         y=10*np.log10(Pxx/max(Pxx))
