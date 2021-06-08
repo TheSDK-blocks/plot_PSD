@@ -358,12 +358,21 @@ def plot_PSD(**kwargs):
         BW=0
         Fc=0
         no_plot=0
+        
+        zoom_plt = 0
+
         a=100
         x=[] #self.rf_signal
+        
+
+        
         if 'BW' in kwargs:
             BW=kwargs.get('BW')
         if 'Fc' in kwargs:
             Fc=kwargs.get('Fc')
+
+        f_centre = Fc
+
         if 'Fs' in kwargs:
             Fs=int(kwargs.get('Fs'))
 
@@ -371,8 +380,26 @@ def plot_PSD(**kwargs):
             no_plot=kwargs.get('no_plot')
         if 'signal' in kwargs:
             x=kwargs.get('signal')
-     
 
+        if 'zoom_plt' in kwargs:
+            zoom_plt=kwargs.get('zoom_plt')
+
+        if 'f_centre' in kwargs:
+            f_centre=kwargs.get('f_centre')
+        if 'f_span' in kwargs:
+            f_span=kwargs.get('f_span')
+
+        f_span   = 200E6
+         
+        f_centre_max = f_centre + f_span/2
+        f_centre_min = f_centre - f_span/2
+
+        print('f_centre',f_centre)
+        print('f_centre_max', f_centre_max)
+        print('f_centre_min', f_centre_min)
+
+
+    
         #s=x.NRfilter(Fs,s,BW,x.self.osr)
         s=x[:,1]+1j*x[:,2]
         Lsegm_perc = 10
@@ -411,13 +438,31 @@ def plot_PSD(**kwargs):
         y_plot =y # y[n1-1:n2]
 
         o=f_plot.argsort()
+        f_plot = f_plot[o]
+        y_plot = y_plot[o]
+        
+        if zoom_plt == 1:
+            f_ctr_diff = np.absolute(f_plot -  f_centre)
+            f_ctr_idx  = f_ctr_diff.argmin()
+
+            f_ctr_max_diff = np.absolute(f_plot -  f_centre_max)
+            f_ctr_max_idx  = f_ctr_max_diff.argmin()
+
+            f_ctr_min_diff = np.absolute(f_plot -  f_centre_min)
+            f_ctr_min_idx  = f_ctr_min_diff.argmin()
 
         if no_plot==0:
-            fig,ax=plt.subplots()
-            plt.plot(f_plot[o]/(10**6),y_plot[o])
+            if zoom_plt==1:
+                fig,ax=plt.subplots(2,constrained_layout = False )
+            #plt.plot(f_plot[o]/(10**6),y_plot[o])
+                ax[0].plot(f_plot/(10**6),y_plot)
+                ax[1].plot(f_plot/(10**6),y_plot)
+
+            else:
+                fig,ax=plt.subplots()
+                plt.plot(f_plot/(10**6),y_plot)
             plt.grid(b=True)
             plt.title("Signal spectrum")
-
 
         #pdb.set_trace()
         if BW!=0:
@@ -443,21 +488,101 @@ def plot_PSD(**kwargs):
                 ACLR.append(10*np.log10(ac))
                 #ax.bar((self.Fc+i*BW)/(10**6),10*np.log10(ac),BW/(10**6))
                 if no_plot==0:
-                    ax.hlines(10*np.log10(ac),(Fc+(i-0.5)*BW)/(10**6),(Fc+(i+0.5)*BW)/(10**6),label=str(ac),colors='r',zorder=10)
-                    ax.text(x=(Fc+(i-0.5)*BW)/(10**6),y=10*np.log10(ac)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
+                    if zoom_plt ==1:
+                        for a in ax:
+                            a.hlines(10*np.log10(ac),(Fc+(i-0.5)*BW)/(10**6),(Fc+(i+0.5)*BW)/(10**6),label=str(ac),colors='r',zorder=10)
+                            a.text(x=(Fc+(i-0.5)*BW)/(10**6),y=10*np.log10(ac)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
+                    else:
+                        ax.hlines(10*np.log10(ac),(Fc+(i-0.5)*BW)/(10**6),(Fc+(i+0.5)*BW)/(10**6),label=str(ac),colors='r',zorder=10)
+                        ax.text(x=(Fc+(i-0.5)*BW)/(10**6),y=10*np.log10(ac)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
+
+
 
         if no_plot==0:
-            #plt.xlim((0,2*Fc/(10**6)))
+            if zoom_plt == 1:
+                ax[1].set_xlim(f_plot[f_ctr_min_idx]/(10**6),f_plot[f_ctr_max_idx]/(10**6))
             plt.xlabel("Frequenzy [MHz]")
             plt.ylabel("PSD [dB]")
             plt.show(block=False)
         if no_plot==0:
             if BW!=0:
-                return fig, ACLR
+                return fig, ACLR 
             return fig
         else:
             if BW!=0:
                 return f_plot[o]/(10**6),y_plot[o], ACLR
             else:
                 return f_plot[o]/(10**6),y_plot[o]
+
+
+def plot_SEM(self,**kwargs):
+
+        delta_f_obue=1500E6
+        measuring_filter = 1E6
+
+        operating_band_h=29.5E9
+        operating_band_l=26.5E9
+
+        f_offset_max = delta_f_obue
+        delta_f_max  = f_offset_max-measuring_filter/2
+
+        delta_f_l = 0.1*(operating_band_h-operating_band_l)
+        delta_f_h = delta_f_max
+
+
+        f_offset_l= 0.1*(operating_band_h-operating_band_l)+5E6
+        f_offset_h= f_offset_max       
+        
+        if 'measuring_filter' in kwargs:
+            measuring_filter=kwargs.get('measuring_filter')
+
+        if 'delta_f_obue' in kwargs:
+            delta_f_obue=kwargs.get('delta_f_obue')
+
+        if 'operating_band_h' in kwargs:
+            operating_band_h=kwargs.get('operating_band_h')
+
+        if 'operating_band_l' in kwargs:
+            operating_band_l=int(kwargs.get('operating_band_l'))
+
+        if 'f_offset_max' in kwargs:
+            f_offset_max=kwargs.get('f_offset_max')
+
+        if 'delta_f_max' in kwargs:
+            delta_f_max=kwargs.get('delta_f_max')
+        
+        if 'delta_f_l' in kwargs:
+            delta_f_l=kwargs.get('delta_f_l')
+
+        if 'delta_f_h' in kwargs:
+            delta_f_h=kwargs.get('delta_f_h')
+
+        if 'f_offset_l' in kwargs:
+            f_offset_l=kwargs.get('f_offset_l')
+
+        if 'f_offset_h' in kwargs:
+            f_offset_h=kwargs.get('f_offset_h')
+
+
+        frequency =[operating_band_l-delta_f_obue-1E9-2*operating_band_h,
+                    operating_band_l-delta_f_obue-1E9,
+                    operating_band_l-f_offset_h,
+                    operating_band_l-delta_f_h,
+                    operating_band_l-f_offset_l, 
+                    operating_band_l-delta_f_l,
+                    operating_band_l, 
+                    operating_band_h,
+                    operating_band_h+delta_f_l,
+                    operating_band_h+f_offset_l,
+                    operating_band_h+delta_f_h,
+                    operating_band_h+f_offset_h,
+                    operating_band_h+delta_f_obue+1E9,
+                    operating_band_h+delta_f_obue+1E9+2*operating_band_h]
+        limit = [-13, -13, -13,-13,-5,-5,0,0,-5,-5,-13,-13, -13, -13, ]
+
+        return(frequency, limit)
+
+
+
+
 
