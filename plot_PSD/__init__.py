@@ -366,42 +366,40 @@ def plot_PSD(**kwargs):
         
 
         
-        if 'BW' in kwargs:
-            BW=kwargs.get('BW')
-        if 'Fc' in kwargs:
-            Fc=kwargs.get('Fc')
+ 
+        BW=kwargs.get('BW',0)
+        Fc=kwargs.get('Fc',0)
+        Fs=int(kwargs.get('Fs',0))
 
-        f_centre = Fc
+        no_plot=kwargs.get('no_plot', 0)
 
-        if 'Fs' in kwargs:
-            Fs=int(kwargs.get('Fs'))
+        x=kwargs.get('signal', 0)
 
-        if 'no_plot' in kwargs:
-            no_plot=kwargs.get('no_plot')
-        if 'signal' in kwargs:
-            x=kwargs.get('signal')
+        zoom_plt=kwargs.get('zoom_plt',0)
 
-        if 'zoom_plt' in kwargs:
-            zoom_plt=kwargs.get('zoom_plt')
+        f_centre=kwargs.get('f_centre', Fc)
 
-        if 'f_centre' in kwargs:
-            f_centre=kwargs.get('f_centre')
-        if 'f_span' in kwargs:
-            f_span=kwargs.get('f_span')
+        
+        f_span=kwargs.get('f_span', BW+100E6)
 
-        f_span   = 200E6
-         
-        f_centre_max = f_centre + f_span/2
-        f_centre_min = f_centre - f_span/2
+        if zoom_plt ==1:
+            f_centre_max = f_centre + f_span/2
+            f_centre_min = f_centre - f_span/2
+            print('fcentre',f_centre)
+            print('f_centre_max', f_centre_max)
+            print('f_centre_min', f_centre_min)
 
-        print('f_centre',f_centre)
-        print('f_centre_max', f_centre_max)
-        print('f_centre_min', f_centre_min)
+
+        print('BW',BW)
 
 
     
         #s=x.NRfilter(Fs,s,BW,x.self.osr)
-        s=x[:,1]+1j*x[:,2]
+        #print('s',x)
+        #print('s',x.shape)
+        #print('s', x[2])
+        s= x[:,1]+1j*x[:,2]
+
         Lsegm_perc = 10
         Fs_given = 0
         plot_color = 'k'
@@ -453,7 +451,7 @@ def plot_PSD(**kwargs):
 
         if no_plot==0:
             if zoom_plt==1:
-                fig,ax=plt.subplots(2,constrained_layout = False )
+                fig,ax=plt.subplots(2, constrained_layout=True)
             #plt.plot(f_plot[o]/(10**6),y_plot[o])
                 ax[0].plot(f_plot/(10**6),y_plot)
                 ax[1].plot(f_plot/(10**6),y_plot)
