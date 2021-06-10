@@ -33,7 +33,7 @@ from scipy import fft as sp_fft
 import multiprocessing
 import time
 import random
-
+import pdb
 
 import logging
 logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
@@ -398,7 +398,13 @@ def plot_PSD(**kwargs):
             d_s = kwargs.get('double_sided', "False")
         if 'signal' in kwargs:
             s=kwargs.get('signal')
-     
+    
+        
+        if s.real.all == 0:
+            s = s.imag
+        else:
+            s = s.real
+
 
     
         #s=x.NRfilter(Fs,s,BW,x.self.osr)
@@ -436,7 +442,7 @@ def plot_PSD(**kwargs):
 
         logging.info('after win')
 
-        f,Pxx=sig.welch(np.real(s),Fs,win,Lsegm,noverlap=noverlap,detrend=False, return_onesided= not(d_s))
+        f,Pxx=sig.welch(s,Fs,win,Lsegm,noverlap=noverlap,detrend=False, return_onesided= not(d_s))
         #f,Pxx=sig.welch(np.real(s),Fs,noverlap=noverlap,detrend=False, return_onesided=True)
 
         logging.info('After wlsch func')
