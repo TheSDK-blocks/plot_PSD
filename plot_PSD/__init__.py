@@ -59,7 +59,7 @@ def plot_PSD(**kwargs):
 
             Example
             -------
-            self.plot_PSD(signal=[1+....-0.5],Fc=1e9,Fs=10e9, BW=200e6)
+            self.plot_PSD(signal=[1+....-0.5],Fc=1e9,Fs=10e9, BW=200e6, double_sided = True )
 
 
         """
