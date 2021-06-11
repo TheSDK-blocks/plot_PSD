@@ -33,7 +33,8 @@ from scipy import fft as sp_fft
 import multiprocessing
 import time
 import random
-import pdb
+import plot_format
+plot_format.set_style('isscc')
 
 import logging
 logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
@@ -56,10 +57,13 @@ def plot_PSD(**kwargs):
                 If 1, will return y and x- axis data (and ACLR) without plotting.
             double_sided: Boolean
                 Double sided plot around central frequency
+            
+            legend: string
+                Label for the plotted figure
 
             Example
             -------
-            self.plot_PSD(signal=[1+....-0.5],Fc=1e9,Fs=10e9, BW=200e6, double_sided = True )
+            self.plot_PSD(signal=[1+....-0.5],Fc=1e9,Fs=10e9, BW=200e6, double_sided = True, label= 'string' )
 
 
         """
@@ -399,6 +403,7 @@ def plot_PSD(**kwargs):
         if 'signal' in kwargs:
             s=kwargs.get('signal')
     
+        legend = kwargs.get('legend', '')
         
         if s.real.all == 0:
             s = s.imag
@@ -479,8 +484,10 @@ def plot_PSD(**kwargs):
 
             else:
                 fig,ax=plt.subplots()
-                plt.plot(f_plot/(10**6),y_plot)
+                plt.plot(f_plot/(10**6),y_plot, label = str(legend))
             plt.grid(b=True)
+            plt.ylim(-100,10)
+            plt.legend()
             plt.title("Signal spectrum")
 
         #pdb.set_trace()
@@ -520,6 +527,7 @@ def plot_PSD(**kwargs):
         if no_plot==0:
             if zoom_plt == 1:
                 ax[1].set_xlim(f_plot[f_ctr_min_idx]/(10**6),f_plot[f_ctr_max_idx]/(10**6))
+            plt.ylim(-100,10)
             plt.xlabel("Frequenzy [MHz]")
             plt.ylabel("PSD [dB]")
             plt.show(block=False)
