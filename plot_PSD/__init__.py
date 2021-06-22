@@ -476,15 +476,8 @@ def plot_PSD(**kwargs):
             f_ctr_min_idx  = f_ctr_min_diff.argmin()
 
         if no_plot==0:
-            if zoom_plt==1:
-                fig,ax=plt.subplots(2, constrained_layout=True)
-            #plt.plot(f_plot[o]/(10**6),y_plot[o])
-                ax[0].plot(f_plot/(10**6),y_plot)
-                ax[1].plot(f_plot/(10**6),y_plot)
-
-            else:
-                fig,ax=plt.subplots()
-                plt.plot(f_plot/(10**6),y_plot, label = str(legend))
+            fig,ax=plt.subplots()
+            plt.plot(f_plot/(10**6),y_plot, label = str(legend))
             plt.grid(b=True)
             plt.ylim(-100,10)
             plt.legend()
@@ -514,19 +507,14 @@ def plot_PSD(**kwargs):
                 ACLR.append(10*np.log10(ac))
                 #ax.bar((self.Fc+i*BW)/(10**6),10*np.log10(ac),BW/(10**6))
                 if no_plot==0:
-                    if zoom_plt ==1:
-                        for a in ax:
-                            a.hlines(10*np.log10(ac),(Fc+(i-0.5)*BW)/(10**6),(Fc+(i+0.5)*BW)/(10**6),label=str(ac),colors='r',zorder=10)
-                            a.text(x=(Fc+(i-0.5)*BW)/(10**6),y=10*np.log10(ac)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
-                    else:
-                        ax.hlines(10*np.log10(ac),(Fc+(i-0.5)*BW)/(10**6),(Fc+(i+0.5)*BW)/(10**6),label=str(ac),colors='r',zorder=10)
-                        ax.text(x=(Fc+(i-0.5)*BW)/(10**6),y=10*np.log10(ac)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
+                   ax.hlines(10*np.log10(ac),(Fc+(i-0.5)*BW)/(10**6),(Fc+(i+0.5)*BW)/(10**6),label=str(ac),colors='r',zorder=10)
+                   ax.text(x=(Fc+(i-0.5)*BW)/(10**6),y=10*np.log10(ac)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
 
 
 
         if no_plot==0:
             if zoom_plt == 1:
-                ax[1].set_xlim(f_plot[f_ctr_min_idx]/(10**6),f_plot[f_ctr_max_idx]/(10**6))
+                ax.set_xlim(f_plot[f_ctr_min_idx]/(10**6),f_plot[f_ctr_max_idx]/(10**6))
             plt.ylim(-100,10)
             plt.xlabel("Frequenzy [MHz]")
             plt.ylabel("PSD [dB]")
