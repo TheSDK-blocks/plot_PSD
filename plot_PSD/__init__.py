@@ -374,7 +374,10 @@ def plot_PSD(**kwargs):
         
  
         BW=kwargs.get('BW',0)
+        BW_conf=kwargs.get('BW_conf',0)
+        ACLR_BW=kwargs.get('ACLR_BW',0)
         Fc=kwargs.get('Fc',0)
+
         Fs=int(kwargs.get('Fs',0))
 
         no_plot=kwargs.get('no_plot', 0)
@@ -483,13 +486,16 @@ def plot_PSD(**kwargs):
             plt.legend()
             plt.title("Signal spectrum")
 
-        #pdb.set_trace()
         if BW!=0:
+            if BW_conf==0:
+                BW_conf=BW
+            if ACLR_BW==0:
+                ACLR_BW=BW_conf
             ACLR=[]
             matrix=np.transpose(np.vstack((f,Pxx)))
             matrix=matrix[matrix[:,0].argsort()]
-            l=(np.abs(matrix[:,0]-(Fc-0.5*BW))).argmin()
-            h=(np.abs(matrix[:,0]-(Fc+0.5*BW))).argmin()
+            l=(np.abs(matrix[:,0]-(Fc-0.5*BW_conf))).argmin()
+            h=(np.abs(matrix[:,0]-(Fc+0.5*BW_conf))).argmin()
             chpow=np.mean(matrix[l:h,1])
 
             ncarrier=(max(f)-min(f))/BW
@@ -501,14 +507,22 @@ def plot_PSD(**kwargs):
                 ncarrier=0
 
             for i in range(-int(np.floor(ncarrier/2)),int(np.floor(ncarrier/2)+1)):
-                l=(np.abs(matrix[:,0]-(Fc+(i-0.5)*BW))).argmin()
-                h=(np.abs(matrix[:,0]-(Fc+(i+0.5)*BW))).argmin()
+                if i ==0:
+                    l=(np.abs(matrix[:,0]-(Fc+(i-0.5)*BW_conf))).argmin()
+                    h=(np.abs(matrix[:,0]-(Fc+(i+0.5)*BW_conf))).argmin()
+                else:    
+                    l=(np.abs(matrix[:,0]-(Fc+(i*BW-0.5*ACLR_BW)))).argmin()
+                    h=(np.abs(matrix[:,0]-(Fc+(i*BW+0.5*ACLR_BW)))).argmin()
                 ac=np.mean(matrix[l:h,1])/chpow
                 ACLR.append(10*np.log10(ac))
                 #ax.bar((self.Fc+i*BW)/(10**6),10*np.log10(ac),BW/(10**6))
                 if no_plot==0:
-                   ax.hlines(10*np.log10(ac),(Fc+(i-0.5)*BW)/(10**6),(Fc+(i+0.5)*BW)/(10**6),label=str(ac),colors='r',zorder=10)
-                   ax.text(x=(Fc+(i-0.5)*BW)/(10**6),y=10*np.log10(ac)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
+                    if i==0:
+                        ax.hlines(10*np.log10(ac),(Fc+(i*BW-0.5*BW_conf))/(10**6),(Fc+(i*BW+0.5*BW_conf))/(10**6),label=str(ac),colors='r',zorder=10)
+                        ax.text(x=(Fc+(i*BW-0.5*BW_conf))/(10**6),y=10*np.log10(ac)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
+                    else:
+                        ax.hlines(10*np.log10(ac),(Fc+(i*BW-0.5*ACLR_BW))/(10**6),(Fc+(i*BW+0.5*ACLR_BW))/(10**6),label=str(ac),colors='r',zorder=10)
+                        ax.text(x=(Fc+(i-0.5)*BW)/(10**6),y=10*np.log10(ac)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
 
 
 
