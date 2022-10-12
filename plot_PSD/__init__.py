@@ -387,9 +387,14 @@ def plot_PSD(**kwargs):
         zoom_plt=kwargs.get('zoom_plt',0)
 
         f_centre=kwargs.get('f_centre', Fc)
+        if hasattr(BW,"__len__") :
+            f_span=kwargs.get('f_span', BW+100E6)
+            if hasattr(f_span,"__len__") :
+                BW_tot=sum(abs(BW))
+                f_span=BW_tot+4*max(BW)
+        else:
+            f_span=kwargs.get('f_span', BW+100E6)
 
-        
-        f_span=kwargs.get('f_span', BW+100E6)
 
         if zoom_plt ==1:
             f_centre_max = f_centre + f_span/2
@@ -486,43 +491,134 @@ def plot_PSD(**kwargs):
             plt.legend()
             plt.title("Signal spectrum")
 
-        if BW!=0:
+
+        if hasattr(BW,"__len__") and len(BW)>1 :
             if BW_conf==0:
-                BW_conf=BW
+                    BW_conf=BW
             if ACLR_BW==0:
                 ACLR_BW=BW_conf
             ACLR=[]
             matrix=np.transpose(np.vstack((f,Pxx)))
             matrix=matrix[matrix[:,0].argsort()]
-            l=(np.abs(matrix[:,0]-(Fc-0.5*BW_conf))).argmin()
-            h=(np.abs(matrix[:,0]-(Fc+0.5*BW_conf))).argmin()
-            chpow=np.mean(matrix[l:h,1])
-
-            ncarrier=(max(f)-min(f))/BW
-            if ncarrier>=5 and max(f)>Fc+2.5*BW and min(f)<Fc-2.5*BW:
-                ncarrier=5
-            elif ncarrier>=3 and max(f)>=Fc+1.5*BW and min(f)<=Fc-1.5*BW:
-                ncarrier=3
-            else:
-                ncarrier=0
-
-            for i in range(-int(np.floor(ncarrier/2)),int(np.floor(ncarrier/2)+1)):
-                if i ==0:
-                    l=(np.abs(matrix[:,0]-(Fc+(i-0.5)*BW_conf))).argmin()
-                    h=(np.abs(matrix[:,0]-(Fc+(i+0.5)*BW_conf))).argmin()
-                else:    
-                    l=(np.abs(matrix[:,0]-(Fc+(i*BW-0.5*ACLR_BW)))).argmin()
-                    h=(np.abs(matrix[:,0]-(Fc+(i*BW+0.5*ACLR_BW)))).argmin()
-                ac=np.mean(matrix[l:h,1])/chpow
-                ACLR.append(10*np.log10(ac))
-                #ax.bar((self.Fc+i*BW)/(10**6),10*np.log10(ac),BW/(10**6))
-                if no_plot==0:
+            BW_vect_abs=abs(BW)
+            f_off=[]
+            l=[]
+            h=[]
+            chpow=[]
+            #pdb.set_trace()
+            BW_idx=0
+            for i in range(0,len(BW)):
+                BWi=BW[i] 
+                if BWi>0:
+                    offset=np.sum(BW_vect_abs[0:i])+BWi/2-BW_tot/2
+                    f_off.append(offset)
                     if i==0:
-                        ax.hlines(10*np.log10(ac),(Fc+(i*BW-0.5*BW_conf))/(10**6),(Fc+(i*BW+0.5*BW_conf))/(10**6),label=str(ac),colors='r',zorder=10)
-                        ax.text(x=(Fc+(i*BW-0.5*BW_conf))/(10**6),y=10*np.log10(ac)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
+                        min_f=min(f)
+                    elif BW[i-1]<0 and abs(BW[i-1])>=BWi:
+                        min_f=hf
                     else:
-                        ax.hlines(10*np.log10(ac),(Fc+(i*BW-0.5*ACLR_BW))/(10**6),(Fc+(i*BW+0.5*ACLR_BW))/(10**6),label=str(ac),colors='r',zorder=10)
-                        ax.text(x=(Fc+(i-0.5)*BW)/(10**6),y=10*np.log10(ac)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
+                        min_f=hf+abs(BW[i-1])
+
+                    lf=(np.abs(matrix[:,0]-(Fc+offset-0.5*BW_conf[BW_idx]))).argmin()
+                    hf=(np.abs(matrix[:,0]-(Fc+offset+0.5*BW_conf[BW_idx]))).argmin()
+                    chpow=np.mean(matrix[lf:hf,1])
+                    lf=matrix[lf,0]
+                    hf=matrix[hf,0]
+                    carriers_left=(lf-min_f)/BWi
+                    if carriers_left>=2 and min_f<=lf-2.5*BWi:
+                        carriers_left=2
+                    elif carriers_left>=1 and  min_f<=lf-1.5*BWi:
+                        carriers_left=1
+                    else:
+                        carriers_left=0
+                    if i < len(BW)-1:
+                        if BW[i+1]<0 and abs(BW[i+1])>=BWi:
+                            max_f=hf+abs(BW[i+1])
+
+                        else:
+                            max_f=hf
+
+                    else:
+                        max_f=max(f)
+                    carriers_right=(max_f-hf)/BWi
+                    if carriers_right>=2 and max_f>=hf-2.5*BWi:
+                        carriers_right=2
+                    elif carriers_right>=1 and  max_f>=hf-1.5*BWi:
+                        carriers_right=1
+                    else:
+                        carriers_right=0
+
+
+                    
+
+                    for i in range(-int(carriers_left),int(carriers_right+1)):
+                        if i ==0:
+                            l=(np.abs(matrix[:,0]-(Fc+offset+(i-0.5)*BW_conf[BW_idx]))).argmin()
+                            h=(np.abs(matrix[:,0]-(Fc+offset+(i+0.5)*BW_conf[BW_idx]))).argmin()
+                        else:    
+                            l=(np.abs(matrix[:,0]-(Fc+offset+(i*BWi-0.5*ACLR_BW[BW_idx])))).argmin()
+                            h=(np.abs(matrix[:,0]-(Fc+offset+(i*BWi+0.5*ACLR_BW[BW_idx])))).argmin()
+                        ac=np.mean(matrix[l:h,1])/chpow
+                        ac_plot=np.mean(matrix[l:h,1])/max(matrix[:,1])
+                        ACLR.append(10*np.log10(ac))
+                        #ax.bar((self.Fc+i*BW)/(10**6),10*np.log10(ac),BW/(10**6))
+                        if no_plot==0:
+                            if i==0:
+                                pass
+                                #ax.hlines(10*np.log10(ac_plot),(Fc+offset+(i*BWi-0.5*BW_conf[BW_idx]))/(10**6),(Fc+offset+(i*BWi+0.5*BW_conf[BW_idx]))/(10**6),label=str(ac),colors='r',zorder=10)
+                                #ax.text(x=(Fc+offset+(i*BWi-0.5*BW_conf[BW_idx]))/(10**6),y=10*np.log10(ac)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
+                            else:
+                                ax.hlines(10*np.log10(ac_plot),(Fc+offset+(i*BWi-0.5*ACLR_BW[BW_idx]))/(10**6),(Fc+offset+(i*BWi+0.5*ACLR_BW[BW_idx]))/(10**6),label=str(ac),colors='r',zorder=10)
+                                ax.text(x=(Fc+offset+(i-0.5)*BWi)/(10**6),y=10*np.log10(ac_plot)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
+
+                    BW_idx+=1
+
+   
+
+            a=5
+            
+
+        else:
+            
+            if BW!=0 :
+                if BW_conf==0:
+                    BW_conf=BW
+                if ACLR_BW==0:
+                    ACLR_BW=BW_conf
+                ACLR=[]
+                matrix=np.transpose(np.vstack((f,Pxx)))
+                matrix=matrix[matrix[:,0].argsort()]
+                l=(np.abs(matrix[:,0]-(Fc-0.5*BW_conf))).argmin()
+                h=(np.abs(matrix[:,0]-(Fc+0.5*BW_conf))).argmin()
+                chpow=np.mean(matrix[l:h,1])
+
+                ncarrier=(max(f)-min(f))/BW
+                if ncarrier>=5 and max(f)>Fc+2.5*BW and min(f)<Fc-2.5*BW:
+                    ncarrier=5
+                elif ncarrier>=3 and max(f)>=Fc+1.5*BW and min(f)<=Fc-1.5*BW:
+                    ncarrier=3
+                else:
+                    ncarrier=0
+
+                for i in range(-int(np.floor(ncarrier/2)),int(np.floor(ncarrier/2)+1)):
+                    if i ==0:
+                        l=(np.abs(matrix[:,0]-(Fc+(i-0.5)*BW_conf))).argmin()
+                        h=(np.abs(matrix[:,0]-(Fc+(i+0.5)*BW_conf))).argmin()
+                    else:    
+                        l=(np.abs(matrix[:,0]-(Fc+(i*BW-0.5*ACLR_BW)))).argmin()
+                        h=(np.abs(matrix[:,0]-(Fc+(i*BW+0.5*ACLR_BW)))).argmin()
+                    ac=np.mean(matrix[l:h,1])/chpow
+                    ACLR.append(10*np.log10(ac))
+                    ac_plot=np.mean(matrix[l:h,1])/max(matrix[:,1])
+                    #ax.bar((self.Fc+i*BW)/(10**6),10*np.log10(ac),BW/(10**6))
+                    if no_plot==0:
+                        if i==0:
+                            pass
+                            #ax.hlines(10*np.log10(ac),(Fc+(i*BW-0.5*BW_conf))/(10**6),(Fc+(i*BW+0.5*BW_conf))/(10**6),label=str(ac),colors='r',zorder=10)
+                            #ax.text(x=(Fc+(i*BW-0.5*BW_conf))/(10**6),y=10*np.log10(ac)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
+                        else:
+                            ax.hlines(10*np.log10(ac_plot),(Fc+(i*BW-0.5*ACLR_BW))/(10**6),(Fc+(i*BW+0.5*ACLR_BW))/(10**6),label=str(ac),colors='r',zorder=10)
+                            ax.text(x=(Fc+(i-0.5)*BW)/(10**6),y=10*np.log10(ac_plot)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
 
 
 
@@ -534,10 +630,15 @@ def plot_PSD(**kwargs):
             plt.ylabel("PSD [dB]")
             plt.show(block=False)
         if no_plot==0:
+            if hasattr(BW,"__len__") and len(BW)>1:
+                return fig, ACLR
+
             if BW!=0:
                 return fig, ACLR 
             return fig
         else:
+            if hasattr(BW,"__len__") and len(BW)>1:
+                return f_plot[o]/(10**6),y_plot[o], ACLR
             if BW!=0:
                 return f_plot[o]/(10**6),y_plot[o], ACLR
             else:
