@@ -385,6 +385,7 @@ def plot_PSD(**kwargs):
         x=kwargs.get('signal', 0)
 
         zoom_plt=kwargs.get('zoom_plt',0)
+        decim=kwargs.get('decim',0)
 
         f_centre=kwargs.get('f_centre', Fc)
         if hasattr(BW,"__len__") :
@@ -397,13 +398,21 @@ def plot_PSD(**kwargs):
 
 
         if zoom_plt ==1:
-            f_centre_max = f_centre + f_span/2
-            f_centre_min = f_centre - f_span/2
-            print('fcentre',f_centre)
-            print('f_centre_max', f_centre_max)
-            print('f_centre_min', f_centre_min)
+            if decim==0:
+                f_centre_max = f_centre + f_span/2
+                f_centre_min = f_centre - f_span/2
+                print('fcentre',f_centre)
+                print('f_centre_max', f_centre_max)
+                print('f_centre_min', f_centre_min)
+            else:
+                f_centre_max = 0 + f_span/2
+                f_centre_min = 0 - f_span/2
+                print('fcentre',0)
+                print('f_centre_max', f_centre_max)
+                print('f_centre_min', f_centre_min)
 
 
+        
         print('BW',BW)
 
         if 'double_sided' in kwargs:
@@ -412,14 +421,40 @@ def plot_PSD(**kwargs):
             s=kwargs.get('signal')
     
         legend = kwargs.get('legend', '')
-        
         if s.real.all == 0:
             s = s.imag
         else:
             s = s.real
 
 
-    
+        #pdb.set_trace() 
+        if decim!=0 :
+            stages=3
+            t=np.arange(len(s))/Fs
+            s=s*np.exp(-1j*2*np.pi*f_centre*t)
+            Fc=0
+            f_centre=0
+            #cic=np.concatenate((np.ones(decim),np.zeros(decim)))
+            #fil=cic
+            der=np.array([1,-1])
+            #der=np.zeros(factor+1)
+            #der[0]=1
+            #der[-1]=-1
+            fil=der
+            #pdb.set_trace()
+            s=np.cumsum(s)
+            for i in range(0,stages-1):
+                #fil=np.convolve(fil,cic,'full')
+                s=np.cumsum(s)
+                fil=np.convolve(fil,der,'full')
+            
+            s=s[::decim]
+
+            s_fil=np.convolve(s,fil,'full')
+
+            #s_fil=s_fil[::decim]
+            s=s_fil
+            Fs=Fs/decim
         #s=x.NRfilter(Fs,s,BW,x.self.osr)
         #print('s',x)
         #print('s',x.shape)
