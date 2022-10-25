@@ -65,6 +65,10 @@ def plot_PSD(**kwargs):
                 decimation factor
             unit: string 
                 Set to "kHz", "MHz", "GHz" - Default "GHz"
+
+            PSD_min: int or str
+                if int -> set the minimum value of PSD, 
+                if str -> dynamically calculate min based on minimum value of PSD of the signal and additional -10dB 
             Example
             -------
             self.plot_PSD(signal=[1+....-0.5],Fc=1e9,Fs=10e9, BW=200e6, double_sided = True, label= 'string' )
@@ -392,7 +396,7 @@ def plot_PSD(**kwargs):
         decim=kwargs.get('decim',0)
 
         unit = kwargs.get('unit',"GHz")
-        pdb.set_trace()
+        
         if unit.upper() == "GHZ":
             freq_scale  = 10**9
             unit_txt    = "GHz"
@@ -402,7 +406,9 @@ def plot_PSD(**kwargs):
         elif unit.upper() == "KHZ":
             freq_scale  = 10**3
             unit_txt    = "kHz"
-            
+        
+        PSD_min = kwargs.get('PSD_min', -60)
+        
 
         f_centre=kwargs.get('f_centre', Fc)
         if hasattr(BW,"__len__") :
@@ -444,7 +450,7 @@ def plot_PSD(**kwargs):
             s = s.real
 
 
-        #pdb.set_trace() 
+        # 
         if decim!=0 :
             stages=3
             t=np.arange(len(s))/Fs
@@ -458,7 +464,7 @@ def plot_PSD(**kwargs):
             #der[0]=1
             #der[-1]=-1
             fil=der
-            #pdb.set_trace()
+            #
             s=np.cumsum(s)
             for i in range(0,stages-1):
                 #fil=np.convolve(fil,cic,'full')
@@ -561,7 +567,6 @@ def plot_PSD(**kwargs):
             l=[]
             h=[]
             chpow=[]
-            #pdb.set_trace()
             BW_idx=0
             for i in range(0,len(BW)):
                 BWi=BW[i] 
@@ -688,8 +693,12 @@ def plot_PSD(**kwargs):
         if no_plot==0:
             if zoom_plt == 1:
                 ax.set_xlim(f_plot[f_ctr_min_idx]/(freq_scale),f_plot[f_ctr_max_idx]/(freq_scale))
-            plt.ylim(-60,10)
-            plt.xlabel("Frequenzy [GHz]")
+
+            if isinstance(PSD_min,str):
+                PSD_min = min(ACLR) - 10 # 
+                #pdb.set_trace()
+            plt.ylim(PSD_min,10)
+            plt.xlabel("Frequenzy ["+unit_txt+"]")
             plt.ylabel("PSD [dB]")
             plt.show(block=False)
         if no_plot==0:
