@@ -395,6 +395,7 @@ def plot_PSD(**kwargs):
                 f_span=BW_tot+4*max(BW)
         else:
             f_span=kwargs.get('f_span', BW+100E6)
+        pdb.set_trace() 
 
 
         if zoom_plt ==1:
@@ -415,8 +416,7 @@ def plot_PSD(**kwargs):
         
         print('BW',BW)
 
-        if 'double_sided' in kwargs:
-            d_s = kwargs.get('double_sided', "False")
+        d_s = kwargs.get('double_sided', "False")
         if 'signal' in kwargs:
             s=kwargs.get('signal')
     
@@ -427,11 +427,11 @@ def plot_PSD(**kwargs):
             s = s.real
 
 
-        #pdb.set_trace() 
         if decim!=0 :
-            stages=3
+            pdb.set_trace() 
+            stages=4
             t=np.arange(len(s))/Fs
-            s=s*np.exp(-1j*2*np.pi*f_centre*t)
+            sign=s*np.exp(-1j*2*np.pi*f_centre*t)
             Fc=0
             f_centre=0
             #cic=np.concatenate((np.ones(decim),np.zeros(decim)))
@@ -441,20 +441,40 @@ def plot_PSD(**kwargs):
             #der[0]=1
             #der[-1]=-1
             fil=der
+            og_decim=decim
             #pdb.set_trace()
-            s=np.cumsum(s)
-            for i in range(0,stages-1):
-                #fil=np.convolve(fil,cic,'full')
-                s=np.cumsum(s)
-                fil=np.convolve(fil,der,'full')
+            #sign=np.cumsum(sign)
+            #sign=sign/(max([max(abs(np.real(sign))),max(abs(np.imag(sign)))]))
+            #sign=sign/len(sign)
             
-            s=s[::decim]
+            for i in range(0,stages):
+                #fil=np.convolve(fil,cic,'full')
+                sign=np.cumsum(sign)
+                sign=sign[::int(np.log2(decim)/2)]
+                #decim=decim/4
+                #sign=sign/(max([max(abs(np.real(sign))),max(abs(np.imag(sign)))]))
+                #sign=sign/len(sign)
+                sign=np.convolve(sign,der,'full')
+            #pdb.set_trace()
+            
 
-            s_fil=np.convolve(s,fil,'full')
+
+
+            #for i in range(0,stages-1):
+            #    #fil=np.convolve(fil,cic,'full')
+            #    sign=np.cumsum(sign)
+            #    #sign=sign/(max([max(abs(np.real(sign))),max(abs(np.imag(sign)))]))
+            #    sign=sign/len(sign)
+            #    fil=np.convolve(fil,der,'full')
+            #pdb.set_trace()
+            #sign=sign[::decim]
+            #
+            #s_fil=np.convolve(sign,fil,'full')
 
             #s_fil=s_fil[::decim]
-            s=s_fil
-            Fs=Fs/decim
+            #s=s_fil
+            s=sign
+            Fs=Fs/og_decim
         #s=x.NRfilter(Fs,s,BW,x.self.osr)
         #print('s',x)
         #print('s',x.shape)
@@ -485,8 +505,8 @@ def plot_PSD(**kwargs):
        
         print('Lsegm',Lsegm)
         #print('length',len(Lsegm))
-        print('win',win)
-        print('len win',len(win))
+        #print('win',win)
+        #print('len win',len(win))
 
         logging.info('after win')
 
