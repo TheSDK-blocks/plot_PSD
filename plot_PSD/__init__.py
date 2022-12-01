@@ -61,6 +61,14 @@ def plot_PSD(**kwargs):
             legend: string
                 Label for the plotted figure
 
+            decim: int 
+                decimation factor
+            unit: string 
+                Set to "kHz", "MHz", "GHz" - Default "GHz"
+
+            PSD_min: int or str
+                if int -> set the minimum value of PSD, 
+                if str -> dynamically calculate min based on minimum value of PSD of the signal and additional -10dB 
             Example
             -------
             self.plot_PSD(signal=[1+....-0.5],Fc=1e9,Fs=10e9, BW=200e6, double_sided = True, label= 'string' )
@@ -387,6 +395,21 @@ def plot_PSD(**kwargs):
         zoom_plt=kwargs.get('zoom_plt',0)
         decim=kwargs.get('decim',0)
 
+        unit = kwargs.get('unit',"GHz")
+        
+        if unit.upper() == "GHZ":
+            freq_scale  = 10**9
+            unit_txt    = "GHz"
+        elif unit.upper() == "MHZ":
+            freq_scale  = 10**6 
+            unit_txt    = "MHz"
+        elif unit.upper() == "KHZ":
+            freq_scale  = 10**3
+            unit_txt    = "kHz"
+        
+        PSD_min = kwargs.get('PSD_min', -60)
+        
+
         f_centre=kwargs.get('f_centre', Fc)
         if hasattr(BW,"__len__") :
             f_span=kwargs.get('f_span', BW+100E6)
@@ -527,6 +550,10 @@ def plot_PSD(**kwargs):
         o=f_plot.argsort()
         f_plot = f_plot[o]
         y_plot = y_plot[o]
+
+            
+
+
         
         if zoom_plt == 1:
             f_ctr_diff = np.absolute(f_plot -  f_centre)
@@ -540,9 +567,9 @@ def plot_PSD(**kwargs):
 
         if no_plot==0:
             fig,ax=plt.subplots()
-            plt.plot(f_plot/(10**6),y_plot, label = str(legend))
+            plt.plot(f_plot/(freq_scale),y_plot, label = str(legend))
             plt.grid(b=True)
-            plt.ylim(-100,10)
+            plt.ylim(-60,10)
             plt.legend()
             plt.title("Signal spectrum")
 
@@ -560,7 +587,6 @@ def plot_PSD(**kwargs):
             l=[]
             h=[]
             chpow=[]
-            #pdb.set_trace()
             BW_idx=0
             for i in range(0,len(BW)):
                 BWi=BW[i] 
@@ -616,15 +642,19 @@ def plot_PSD(**kwargs):
                         ac=np.mean(matrix[l:h,1])/chpow
                         ac_plot=np.mean(matrix[l:h,1])/max(matrix[:,1])
                         ACLR.append(10*np.log10(ac))
-                        #ax.bar((self.Fc+i*BW)/(10**6),10*np.log10(ac),BW/(10**6))
+                        #ax.bar((self.Fc+i*BW)/(freq_scale),10*np.log10(ac),BW/(freq_scale))
                         if no_plot==0:
                             if i==0:
                                 pass
-                                #ax.hlines(10*np.log10(ac_plot),(Fc+offset+(i*BWi-0.5*BW_conf[BW_idx]))/(10**6),(Fc+offset+(i*BWi+0.5*BW_conf[BW_idx]))/(10**6),label=str(ac),colors='r',zorder=10)
-                                #ax.text(x=(Fc+offset+(i*BWi-0.5*BW_conf[BW_idx]))/(10**6),y=10*np.log10(ac)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
+                                #ax.hlines(10*np.log10(ac_plot),(Fc+offset+(i*BWi-0.5*BW_conf[BW_idx]))/(freq_scale),(Fc+offset+(i*BWi+0.5*BW_conf[BW_idx]))/(freq_scale),label=str(ac),colors='r',zorder=10)
+                                #ax.text(x=(Fc+offset+(i*BWi-0.5*BW_conf[BW_idx]))/(freq_scale),y=10*np.log10(ac)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
                             else:
-                                ax.hlines(10*np.log10(ac_plot),(Fc+offset+(i*BWi-0.5*ACLR_BW[BW_idx]))/(10**6),(Fc+offset+(i*BWi+0.5*ACLR_BW[BW_idx]))/(10**6),label=str(ac),colors='r',zorder=10)
-                                ax.text(x=(Fc+offset+(i-0.5)*BWi)/(10**6),y=10*np.log10(ac_plot)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
+                                ax.hlines(10*np.log10(ac_plot),(Fc+offset+(i*BWi-0.5*ACLR_BW[BW_idx]))/(freq_scale),(Fc+offset+(i*BWi+0.5*ACLR_BW[BW_idx]))/(freq_scale),label=str(ac),colors='r',zorder=10)
+                                ax.text(x=(Fc+offset+(i-0.5)*BWi)/(freq_scale),y=10*np.log10(ac_plot)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
+
+                                # Does this get back those ACLR side band "lines"? with proper scaling -> Not this part
+                                #ax.hlines(10*np.log10(ac_plot),(Fc+offset+(i*BWi-0.5*ACLR_BW[BW_idx]))/(freq_scale),(Fc+offset+(i*BWi+0.5*ACLR_BW[BW_idx]))/(freq_scale),label=str(ac),colors='r',zorder=10)
+                                #ax.text(x=(Fc+offset+(i-0.5)*BWi)/(freq_scale),y=10*np.log10(ac_plot)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
 
                     BW_idx+=1
 
@@ -665,23 +695,30 @@ def plot_PSD(**kwargs):
                     ac=np.mean(matrix[l:h,1])/chpow
                     ACLR.append(10*np.log10(ac))
                     ac_plot=np.mean(matrix[l:h,1])/max(matrix[:,1])
-                    #ax.bar((self.Fc+i*BW)/(10**6),10*np.log10(ac),BW/(10**6))
+                    #ax.bar((self.Fc+i*BW)/(freq_scale),10*np.log10(ac),BW/(freq_scale))
                     if no_plot==0:
                         if i==0:
                             pass
-                            #ax.hlines(10*np.log10(ac),(Fc+(i*BW-0.5*BW_conf))/(10**6),(Fc+(i*BW+0.5*BW_conf))/(10**6),label=str(ac),colors='r',zorder=10)
-                            #ax.text(x=(Fc+(i*BW-0.5*BW_conf))/(10**6),y=10*np.log10(ac)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
+                            #ax.hlines(10*np.log10(ac),(Fc+(i*BW-0.5*BW_conf))/(freq_scale),(Fc+(i*BW+0.5*BW_conf))/(freq_scale),label=str(ac),colors='r',zorder=10)
+                            #ax.text(x=(Fc+(i*BW-0.5*BW_conf))/(freq_scale),y=10*np.log10(ac)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
                         else:
-                            ax.hlines(10*np.log10(ac_plot),(Fc+(i*BW-0.5*ACLR_BW))/(10**6),(Fc+(i*BW+0.5*ACLR_BW))/(10**6),label=str(ac),colors='r',zorder=10)
-                            ax.text(x=(Fc+(i-0.5)*BW)/(10**6),y=10*np.log10(ac_plot)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
+                            # Does this then get back those red lines
+                            ax.hlines(10*np.log10(ac_plot),(Fc+(i*BW-0.5*ACLR_BW))/(freq_scale),(Fc+(i*BW+0.5*ACLR_BW))/(freq_scale),label=str(ac),colors='r',zorder=10)
+                            ax.text(x=(Fc+(i-0.5)*BW)/(freq_scale),y=10*np.log10(ac_plot)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
 
+                            #ax.hlines(10*np.log10(ac_plot),(Fc+(i*BW-0.5*ACLR_BW))/(freq_scale),(Fc+(i*BW+0.5*ACLR_BW))/(freq_scale),label=str(ac),colors='r',zorder=10)
+                            #ax.text(x=(Fc+(i-0.5)*BW)/(freq_scale),y=10*np.log10(ac_plot)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
 
 
         if no_plot==0:
             if zoom_plt == 1:
-                ax.set_xlim(f_plot[f_ctr_min_idx]/(10**6),f_plot[f_ctr_max_idx]/(10**6))
-            plt.ylim(-100,10)
-            plt.xlabel("Frequenzy [MHz]")
+                ax.set_xlim(f_plot[f_ctr_min_idx]/(freq_scale),f_plot[f_ctr_max_idx]/(freq_scale))
+
+            if isinstance(PSD_min,str):
+                PSD_min = min(ACLR) - 10 # 
+                #pdb.set_trace()
+            plt.ylim(PSD_min,10)
+            plt.xlabel("Frequenzy ["+unit_txt+"]")
             plt.ylabel("PSD [dB]")
             plt.show(block=False)
         if no_plot==0:
@@ -693,11 +730,11 @@ def plot_PSD(**kwargs):
             return fig
         else:
             if hasattr(BW,"__len__") and len(BW)>1:
-                return f_plot[o]/(10**6),y_plot[o], ACLR
+                return f_plot[o]/(freq_scale),y_plot[o], ACLR
             if BW!=0:
-                return f_plot[o]/(10**6),y_plot[o], ACLR
+                return f_plot[o]/(freq_scale),y_plot[o], ACLR
             else:
-                return f_plot[o]/(10**6),y_plot[o]
+                return f_plot[o]/(freq_scale),y_plot[o]
 
 
 def plot_SEM(self,**kwargs):
