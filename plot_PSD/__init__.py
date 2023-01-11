@@ -418,7 +418,7 @@ def plot_PSD(**kwargs):
                 f_span=BW_tot+4*max(BW)
         else:
             f_span=kwargs.get('f_span', BW+100E6)
-        pdb.set_trace() 
+        #pdb.set_trace() 
 
 
         if zoom_plt ==1:
@@ -451,7 +451,7 @@ def plot_PSD(**kwargs):
 
 
         if decim!=0 :
-            pdb.set_trace() 
+            #pdb.set_trace() 
             stages=4
             t=np.arange(len(s))/Fs
             sign=s*np.exp(-1j*2*np.pi*f_centre*t)
