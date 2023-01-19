@@ -68,7 +68,7 @@ def plot_PSD(**kwargs):
 
             PSD_min: int or str
                 if int -> set the minimum value of PSD, 
-                if str -> dynamically calculate min based on minimum value of PSD of the signal and additional -10dB 
+                if str -> dynamically calculate min automatically
             Example
             -------
             self.plot_PSD(signal=[1+....-0.5],Fc=1e9,Fs=10e9, BW=200e6, double_sided = True, label= 'string' )
@@ -569,7 +569,6 @@ def plot_PSD(**kwargs):
             fig,ax=plt.subplots()
             plt.plot(f_plot/(freq_scale),y_plot, label = str(legend))
             plt.grid(b=True)
-            plt.ylim(-60,10)
             plt.legend()
             plt.title("Signal spectrum")
 
@@ -713,12 +712,9 @@ def plot_PSD(**kwargs):
         if no_plot==0:
             if zoom_plt == 1:
                 ax.set_xlim(f_plot[f_ctr_min_idx]/(freq_scale),f_plot[f_ctr_max_idx]/(freq_scale))
-
-            if isinstance(PSD_min,str):
-                PSD_min = min(ACLR) - 10 # 
-                #pdb.set_trace()
-            plt.ylim(PSD_min,10)
-            plt.xlabel("Frequenzy ["+unit_txt+"]")
+            if not isinstance(PSD_min,str):
+                plt.ylim(PSD_min,10)
+            plt.xlabel("Frequency ["+unit_txt+"]")
             plt.ylabel("PSD [dB]")
             plt.show(block=False)
         if no_plot==0:
