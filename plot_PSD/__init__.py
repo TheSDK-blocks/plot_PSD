@@ -568,7 +568,7 @@ def plot_PSD(**kwargs):
         if no_plot==0:
             fig,ax=plt.subplots()
             plt.plot(f_plot/(freq_scale),y_plot, label = str(legend))
-            plt.grid(b=True)
+            plt.grid(visible=True)
             plt.legend()
             plt.title("Signal spectrum")
 
