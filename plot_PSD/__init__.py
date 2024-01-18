@@ -379,7 +379,7 @@ def plot_PSD(**kwargs):
         s=[] #self.rf_signal
         
 
-        
+        ACLR_offset=kwargs.get('ACLR_offset',0)
  
         BW=kwargs.get('BW',0)
         BW_conf=kwargs.get('BW_conf',0)
@@ -636,8 +636,12 @@ def plot_PSD(**kwargs):
                             l=(np.abs(matrix[:,0]-(Fc+offset+(i-0.5)*BW_conf[BW_idx]))).argmin()
                             h=(np.abs(matrix[:,0]-(Fc+offset+(i+0.5)*BW_conf[BW_idx]))).argmin()
                         else:    
-                            l=(np.abs(matrix[:,0]-(Fc+offset+(i*BWi-0.5*ACLR_BW[BW_idx])))).argmin()
-                            h=(np.abs(matrix[:,0]-(Fc+offset+(i*BWi+0.5*ACLR_BW[BW_idx])))).argmin()
+                            if ACLR_offset==0:
+                                l=(np.abs(matrix[:,0]-(Fc+offset+(i*BWi-0.5*ACLR_BW[BW_idx])))).argmin()
+                                h=(np.abs(matrix[:,0]-(Fc+offset+(i*BWi+0.5*ACLR_BW[BW_idx])))).argmin()
+                            else: 
+                                l=(np.abs(matrix[:,0]-(Fc+ACLR_offset+(i*BWi-0.5*ACLR_BW[BW_idx])))).argmin()
+                                h=(np.abs(matrix[:,0]-(Fc+ACLR_offset+(i*BWi+0.5*ACLR_BW[BW_idx])))).argmin()
                         ac=np.mean(matrix[l:h,1])/chpow
                         ac_plot=np.mean(matrix[l:h,1])/max(matrix[:,1])
                         ACLR.append(10*np.log10(ac))
@@ -689,8 +693,12 @@ def plot_PSD(**kwargs):
                         l=(np.abs(matrix[:,0]-(Fc+(i-0.5)*BW_conf))).argmin()
                         h=(np.abs(matrix[:,0]-(Fc+(i+0.5)*BW_conf))).argmin()
                     else:    
-                        l=(np.abs(matrix[:,0]-(Fc+(i*BW-0.5*ACLR_BW)))).argmin()
-                        h=(np.abs(matrix[:,0]-(Fc+(i*BW+0.5*ACLR_BW)))).argmin()
+                        if ACLR_offset==0:
+                            l=(np.abs(matrix[:,0]-(Fc+(i*BW-0.5*ACLR_BW)))).argmin()
+                            h=(np.abs(matrix[:,0]-(Fc+(i*BW+0.5*ACLR_BW)))).argmin()
+                        else:
+                            l=(np.abs(matrix[:,0]-(Fc+(i*ACLR_offset-0.5*ACLR_BW)))).argmin()
+                            h=(np.abs(matrix[:,0]-(Fc+(i*ACLR_offset+0.5*ACLR_BW)))).argmin()
                     ac=np.mean(matrix[l:h,1])/chpow
                     ACLR.append(10*np.log10(ac))
                     ac_plot=np.mean(matrix[l:h,1])/max(matrix[:,1])
@@ -702,8 +710,12 @@ def plot_PSD(**kwargs):
                             #ax.text(x=(Fc+(i*BW-0.5*BW_conf))/(freq_scale),y=10*np.log10(ac)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
                         else:
                             # Does this then get back those red lines
-                            ax.hlines(10*np.log10(ac_plot),(Fc+(i*BW-0.5*ACLR_BW))/(freq_scale),(Fc+(i*BW+0.5*ACLR_BW))/(freq_scale),label=str(ac),colors='r',zorder=10)
-                            ax.text(x=(Fc+(i-0.5)*BW)/(freq_scale),y=10*np.log10(ac_plot)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
+                            if ACLR_offset==0:
+                                ax.hlines(10*np.log10(ac_plot),(Fc+(i*BW-0.5*ACLR_BW))/(freq_scale),(Fc+(i*BW+0.5*ACLR_BW))/(freq_scale),label=str(ac),colors='r',zorder=10)
+                                ax.text(x=(Fc+(i-0.5)*BW)/(freq_scale),y=10*np.log10(ac_plot)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
+                            else:
+                                ax.hlines(10*np.log10(ac_plot),(Fc+(i*ACLR_offset-0.5*ACLR_BW))/(freq_scale),(Fc+(i*ACLR_offset+0.5*ACLR_BW))/(freq_scale),label=str(ac),colors='r',zorder=10)
+                                ax.text(x=(Fc+(i-0.5)*ACLR_offset)/(freq_scale),y=10*np.log10(ac_plot)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
 
                             #ax.hlines(10*np.log10(ac_plot),(Fc+(i*BW-0.5*ACLR_BW))/(freq_scale),(Fc+(i*BW+0.5*ACLR_BW))/(freq_scale),label=str(ac),colors='r',zorder=10)
                             #ax.text(x=(Fc+(i-0.5)*BW)/(freq_scale),y=10*np.log10(ac_plot)+3,s=str(round(10*np.log10(ac),2)),fontsize='small',color='r')
