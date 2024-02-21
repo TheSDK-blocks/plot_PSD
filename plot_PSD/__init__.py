@@ -574,10 +574,10 @@ def plot_PSD(**kwargs):
 
 
         if hasattr(BW,"__len__") and len(BW)>1 :
-            if BW_conf==0:
-                    BW_conf=BW
-            if ACLR_BW==0:
-                ACLR_BW=BW_conf
+            if not hasattr(BW_conf,"__len__"):
+                BW_conf=[BW_conf]
+            if not hasattr(ACLR_BW,"__len__"):
+                ACLR_BW=[ACLR_BW]
             ACLR=[]
             matrix=np.transpose(np.vstack((f,Pxx)))
             matrix=matrix[matrix[:,0].argsort()]
@@ -592,15 +592,15 @@ def plot_PSD(**kwargs):
                 if BWi>0:
                     offset=np.sum(BW_vect_abs[0:i])+BWi/2-BW_tot/2
                     f_off.append(offset)
+                    lf=(np.abs(matrix[:,0]-(Fc+offset-0.5*BW_conf[BW_idx]))).argmin()
+                    hf=(np.abs(matrix[:,0]-(Fc+offset+0.5*BW_conf[BW_idx]))).argmin()
+
                     if i==0:
                         min_f=min(f)
                     elif BW[i-1]<0 and abs(BW[i-1])>=BWi:
                         min_f=hf
                     else:
                         min_f=hf+abs(BW[i-1])
-
-                    lf=(np.abs(matrix[:,0]-(Fc+offset-0.5*BW_conf[BW_idx]))).argmin()
-                    hf=(np.abs(matrix[:,0]-(Fc+offset+0.5*BW_conf[BW_idx]))).argmin()
                     chpow=np.mean(matrix[lf:hf,1])
                     lf=matrix[lf,0]
                     hf=matrix[hf,0]
