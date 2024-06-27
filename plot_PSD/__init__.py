@@ -522,7 +522,7 @@ def plot_PSD(**kwargs):
         noverlap = round(Lsegm * overlap_perc/100)
 
         
-        win=sig.tukey(Lsegm,param)
+        win=sig.windows.tukey(Lsegm,param)
 
                 
        
